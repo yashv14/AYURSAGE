@@ -55,6 +55,8 @@ Authorization is enforced by backend services for every operation. Frontend visi
 - Whether a doctor may create or submit on behalf of a patient.
 - Whether a doctor may directly correct model-bound input and under what provenance.
 - Whether patients can upload attachments before review.
-- Existence-hiding `403` versus `404` policy.
+- Clinical collection/verification authority for Disease, Nadi, and Prakriti; see
+  [clinical governance](clinical-governance.md). API existence hiding is defined in
+  [the API contract](api-contract.md).
 - Operational conditions for inference/report retry.
 - Emergency/break-glass access, if any; none is assumed.

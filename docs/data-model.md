@@ -14,7 +14,7 @@ erDiagram
     USER ||--o{ REFRESH_SESSION : owns
     PATIENT ||--o{ CONSULTATION : opens
     USER ||--o{ CONSULTATION : assigned_doctor
-    CONSULTATION ||--|{ CLINICAL_INPUT : versions
+    CONSULTATION ||--o{ CLINICAL_INPUT : versions
     CLINICAL_INPUT ||--o{ PREDICTION_RUN : processed_by
     MODEL_VERSION ||--o{ PREDICTION_RUN : identifies
     PREDICTION_RUN ||--o{ PREDICTION_OUTPUT : contains
