@@ -2,6 +2,9 @@
 
 **Status:** Phase 2 application design; column types and migrations follow in the persistence phase.
 
+The Phase 3 physical schema and remaining service integrity requirements are recorded
+in [persistence implementation](persistence.md). Clinical vocabularies remain evidence-gated.
+
 The model separates identity, versioned patient input, immutable raw inference, deterministic enrichment, doctor review, approval, reports, files, sessions, and audit history. It does not encode unverified V17 categories or class labels.
 
 ## Entity-relationship diagram

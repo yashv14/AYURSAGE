@@ -11,4 +11,5 @@ This repository is in its foundation phase. Clinical prediction is intentionally
 - [API contract outline](docs/api-contract.md)
 - [Authorization matrix](docs/authorization-matrix.md)
 - [Clinical provenance and operational gates](docs/clinical-governance.md)
+- [Persistence implementation and boundaries](docs/persistence.md)
 - [Local setup](docs/local-setup.md)

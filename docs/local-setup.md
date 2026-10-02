@@ -5,7 +5,8 @@
 - Python 3.12 or newer
 - Node.js 22 or newer and npm
 
-The current shell does not require MySQL or a model. Those dependencies will be added only in their evidence-backed phases.
+Docker Desktop (Linux containers) is required for the supplied local MySQL setup and
+isolated integration checks. A model is neither required nor enabled.
 
 ## Backend
 
@@ -13,8 +14,41 @@ The current shell does not require MySQL or a model. Those dependencies will be 
 python -m venv .venv
 source .venv/bin/activate
 python -m pip install -r backend/requirements-dev.txt
+```
+
+On Windows PowerShell, activate with `.venv/Scripts/Activate.ps1`. Application and
+transitive dependencies are pinned in `backend/constraints.txt`; these pins provide
+no evidence about the unknown V17 runtime. Gunicorn is for Linux deployment only.
+
+## Local MySQL and migrations
+
+Copy `.env.example` to an ignored `.env` and replace password placeholders locally.
+Compose reads `.env`; the Flask factory reads process environment variables. Export
+`DATABASE_URL` separately before Flask or Alembic commands (or use VS Code's ignored
+local environment configuration). Percent-encode reserved password characters.
+Do not print or commit the resulting connection string.
+
+Start the named development project, preserving its persistent volume:
+
+```bash
+docker compose -p ayursage-dev up -d --wait
+python -m alembic upgrade head
+python -m alembic current
+python -m alembic check
 flask --app backend.app:create_app run --port 5000
 ```
+
+Set `DATABASE_URL` to the example's MySQL driver/host/port/database using your local
+password: in PowerShell use `$env:DATABASE_URL = '<your local URL>'`; in Bash use
+`export DATABASE_URL='<your local URL>'`. No schema is created on application import
+or startup. The initial migration refuses a nonempty unversioned database. Never
+use `stamp` to bypass that guard. MySQL DDL is not transactionally reversible: inspect
+a partial migration failure and restore from an approved backup rather than retrying
+blindly. Review generated migrations and back up real data before future upgrades.
+
+`docker compose -p ayursage-dev stop` preserves development data. Do not run volume
+removal, schema reset, or downgrade against a development database containing data.
+Downgrade is restricted to explicitly enabled disposable `ayursage_test_` schemas.
 
 Check process liveness at <http://localhost:5000/api/v1/health/live>.
 
@@ -23,6 +57,32 @@ Run tests from the repository root:
 ```bash
 python -m pytest
 ```
+
+Without a test server, MySQL integration tests explicitly skip. Unit-test success
+does not establish MySQL migration evidence. Run the complete disposable check:
+
+```bash
+python -m scripts.test_mysql
+```
+
+This creates a unique Docker project, generates temporary credentials, publishes a
+loopback-only random port, and uses tmpfs storage. Tests create a fresh random schema,
+apply the migration, check constraints and UTC/version behavior, verify no schema
+drift, downgrade, then upgrade again. Cleanup drops only the schema whose creation
+succeeded in this run and removes only its unique test project. No existing database
+URL is reused. Docker must be running; failures are reported as failures, not skips.
+
+For a separately provisioned **disposable test server**, set `MYSQL_TEST_SERVER_URL`
+to a MySQL URL without a database and `REQUIRE_MYSQL_TESTS=1`, then run
+`python -m pytest tests/integration`. The test account needs CREATE/DROP DATABASE on
+that disposable server. Never provide production credentials. CI runs the Docker
+wrapper and fails if integration checks cannot execute.
+
+Readiness at `/api/v1/health/ready` returns `200` only when the database is reachable
+and its Alembic revision is `0001_platform`; otherwise it returns `503`.
+The JSON always reports `ml: unavailable`. This is platform readiness, not clinical
+readiness. Liveness keeps its existing `{status: "ok"}` response. Every response
+includes `X-Request-ID`; safe errors include the same ID in their JSON body.
 
 ## Frontend
 
