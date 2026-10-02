@@ -19,7 +19,10 @@ A complete repository filename and content inspection found none of the followin
 - authorized synthetic reference inputs and expected outputs; or
 - Clinical Reasoning, Lifestyle, or Yoga engine source/configuration.
 
-The only Python code currently present is the Flask shell and its liveness test. Consequently, the ML integration stays unavailable and `ML_ENABLED=false` remains the only supported setting.
+At the Phase 2 inventory, the Python code consisted of the Flask shell and its liveness test.
+Phase 3 adds application persistence and infrastructure tests, without supplying any
+of the original ML materials above. ML integration stays unavailable and
+`ML_ENABLED=false` remains the only supported setting.
 
 ## Evidence classification
 

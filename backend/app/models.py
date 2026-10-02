@@ -185,12 +185,12 @@ class ReviewDecision(Record, db.Model):
     doctor_review_id = fk("doctor_reviews", nullable=False, index=True)
     target_code = db.Column(db.String(128), nullable=False)
     action = db.Column(db.String(16), nullable=False)
-    content = db.Column(db.JSON)
+    content = db.Column(db.JSON(none_as_null=True))
     reason = db.Column(db.Text)
     review = db.relationship(DoctorReview)
     __table_args__ = (UniqueConstraint("doctor_review_id", "target_code"),
                       states("action", "ACCEPT EDIT OVERRIDE"),
-                      CheckConstraint("action = 'ACCEPT' OR (reason IS NOT NULL AND length(trim(reason)) > 0 AND content IS NOT NULL)", name="change_requires_reason"))
+                      CheckConstraint("action = 'ACCEPT' OR (reason IS NOT NULL AND length(trim(reason)) > 0 AND content IS NOT NULL AND lower(JSON_TYPE(content)) <> 'null')", name="change_requires_reason"))
 
 
 class Prescription(Record, db.Model):

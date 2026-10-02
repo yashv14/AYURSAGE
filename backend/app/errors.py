@@ -30,7 +30,8 @@ def register_errors(app):
     def database_error(error):
         db.session.rollback()
         # PyMySQL maps MySQL CHECK violations to OperationalError, not IntegrityError.
-        if getattr(getattr(error, "orig", None), "args", (None,))[0] == 3819:
+        original_args = getattr(getattr(error, "orig", None), "args", ())
+        if original_args and original_args[0] == 3819:
             return error_response("CONFLICT", "Operation conflicts with stored state", 409)
         app.logger.error("Database request failed request_id=%s", g.request_id)
         return error_response("DATABASE_UNAVAILABLE", "Database operation unavailable", 503)

@@ -281,7 +281,7 @@ def upgrade():
     sa.Column('reason', sa.Text(), nullable=True),
     sa.Column('id', sa.String(length=36), nullable=False),
     sa.Column('created_at', mysql.DATETIME(fsp=6), nullable=False),
-    sa.CheckConstraint("action = 'ACCEPT' OR (reason IS NOT NULL AND length(trim(reason)) > 0 AND content IS NOT NULL)", name=op.f('ck_review_decisions_change_requires_reason')),
+    sa.CheckConstraint("action = 'ACCEPT' OR (reason IS NOT NULL AND length(trim(reason)) > 0 AND content IS NOT NULL AND lower(JSON_TYPE(content)) <> 'null')", name=op.f('ck_review_decisions_change_requires_reason')),
     sa.CheckConstraint("action IN ('ACCEPT','EDIT','OVERRIDE')", name=op.f('ck_review_decisions_action_allowed')),
     sa.ForeignKeyConstraint(['doctor_review_id'], ['doctor_reviews.id'], name=op.f('fk_review_decisions_doctor_review_id_doctor_reviews'), ondelete='RESTRICT'),
     sa.PrimaryKeyConstraint('id', name=op.f('pk_review_decisions')),

@@ -37,6 +37,13 @@ def test_errors_and_ids_are_safe(app):
     assert missing.json["requestId"] != response.json["requestId"]
 
 
+def test_database_error_without_driver_arguments_is_safe(app):
+    @app.get("/database-error")
+    def database_error():
+        raise OperationalError("private SQL", {}, Exception())
+    assert app.test_client().get("/database-error").status_code == 503
+
+
 @pytest.mark.parametrize("exception", [IntegrityError("private SQL", {}, Exception("secret")),
                                        OperationalError("private SQL", {}, type("CheckViolation", (Exception,), {})(3819, "secret"))])
 def test_database_conflicts_are_safe(app, exception):
