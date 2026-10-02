@@ -5,4 +5,9 @@ This repository is in its foundation phase. Clinical prediction is intentionally
 
 - [Architecture](docs/architecture.md)
 - [Implementation roadmap](docs/implementation-roadmap.md)
+- [Frozen V17 evidence and integration contract](docs/v17-integration-contract.md)
+- [Logical data model and ER diagram](docs/data-model.md)
+- [Workflow state machines](docs/workflow-states.md)
+- [API contract outline](docs/api-contract.md)
+- [Authorization matrix](docs/authorization-matrix.md)
 - [Local setup](docs/local-setup.md)
