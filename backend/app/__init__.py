@@ -3,10 +3,27 @@
 from flask import Flask
 
 from .health import health_blueprint
+from .config import database_options, environment
+from .database import db, configure_engine
+from .errors import register_errors
 
 
-def create_app() -> Flask:
+def create_app(config=None) -> Flask:
     """Create the Flask application without loading clinical or ML code."""
     app = Flask(__name__)
+    app.config.update(environment())
+    if config:
+        app.config.update(config)
+    if str(app.config["ML_ENABLED"]).lower() != "false":
+        raise ValueError("ML integration is unavailable; ML_ENABLED must be false")
+    app.config["SQLALCHEMY_DATABASE_URI"] = app.config["DATABASE_URL"]
+    app.config["SQLALCHEMY_ENGINE_OPTIONS"] = database_options(
+        app.config["DATABASE_URL"], testing=app.config.get("TESTING", False))
+    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+    db.init_app(app)
+    from . import models  # noqa: F401 - register metadata without querying the DB
+    with app.app_context():
+        configure_engine(db.engine)
+    register_errors(app)
     app.register_blueprint(health_blueprint, url_prefix="/api/v1/health")
     return app
