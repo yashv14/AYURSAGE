@@ -90,6 +90,32 @@ Fields below are application/transport fields. `clinicalInput` and raw `result` 
 
 ## Clinical input schema gate
 
+### Application field constraints
+
+These constraints apply to the outline above and do not define model fields:
+
+- `expectedRowVersion` and `inputRevision` are positive integers; reject booleans,
+  fractional values, and missing values on routes requiring them.
+- Resource IDs and schema/report versions are nonempty opaque strings. The server
+  resolves known versions; client-supplied versions cannot enable an unknown schema.
+- `reason` is a nonempty string after whitespace validation. Length and body-size
+  limits must be selected and enforced before these routes are implemented.
+- Review `decisions` is an array of `{targetCode, action, content?, reason?}`.
+  `action` is `ACCEPT`, `EDIT`, or `OVERRIDE`; edit/override require content and reason.
+  Target identifiers and content types await evidence; completeness is checked against
+  the verified target set, never against client-supplied counts.
+- Unknown writable fields are rejected. Patient ownership, role, assignment,
+  verification actor, and approval timestamps are server-controlled.
+- Idempotency keys use the header consistently; the optional body field on creation
+  is not a second authority. Reusing a key with a different payload returns `409`.
+- Protected resource lookups outside ownership/assignment scope return `404`;
+  role-forbidden operations without a resource lookup return `403`.
+
+Successful resource representations expose only role-allowed fields. A consultation
+includes `id`, `state`, `rowVersion`, nullable `currentInputRevision`, and safe processing
+status. A new draft may have no input revision. Raw clinical payloads are excluded from
+operational-admin projections. Collection responses wrap `{items, nextCursor}` in `data`.
+
 The future `clinicalInput` schema must be generated from reviewed evidence, not this outline. It must specify exact feature keys/order mapping, types, accepted categories, numeric units/precision, finite-number checks, required/missing behavior, and provenance. Additional clinical context must use separate fields and must not enter the frozen model unless the original contract proves it does.
 
 ## Prediction response gate

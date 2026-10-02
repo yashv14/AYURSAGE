@@ -16,7 +16,7 @@ This roadmap turns the target architecture into evidence gates. A phase is compl
 
 - Obtain the original artifact, `predict_single()` source/helpers, dependency evidence, and provenance.
 - Calculate and approve a trusted checksum without modifying the artifact.
-- Statistically inspect import behavior before execution; training must not run on import.
+- Statically inspect import behavior before execution; training must not run on import.
 - Obtain authorized synthetic reference inputs/outputs and audit engine boundaries.
 - Confirm exact feature order, categories, units, missing-value rules, target identifiers, labels, and return structure.
 - Finalize ER diagram, API schemas, state diagrams, ownership/assignment matrix, provenance rules, retention, onboarding, Nadi/Prakriti/Disease ownership, and contraindication policy.
