@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+
+# Node/Vite
+node_modules/
+dist/
+.vite/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Editors and operating systems
+.idea/
+.vscode/
+.DS_Store
+
+# Runtime artifacts
+*.log
+reports/
+uploads/
+*.pkl
+*.pickle
+*.joblib
