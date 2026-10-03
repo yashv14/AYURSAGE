@@ -8,8 +8,18 @@ from werkzeug.exceptions import HTTPException
 from .database import db
 
 
-def error_response(code, message, status):
-    return jsonify(error={"code": code, "message": message}, requestId=g.request_id), status
+
+class ApiError(Exception):
+    def __init__(self, code, message, status, fields=None):
+        super().__init__(message)
+        self.code, self.message, self.status, self.fields = code, message, status, fields
+
+
+def error_response(code, message, status, fields=None):
+    error = {"code": code, "message": message}
+    if fields:
+        error["fields"] = fields
+    return jsonify(error=error, requestId=g.request_id), status
 
 
 def register_errors(app):
@@ -21,6 +31,11 @@ def register_errors(app):
     def correlation_header(response):
         response.headers["X-Request-ID"] = g.request_id
         return response
+
+    @app.errorhandler(ApiError)
+    def api_error(error):
+        db.session.rollback()
+        return error_response(error.code, error.message, error.status, error.fields)
 
     @app.errorhandler(HTTPException)
     def http_error(error):

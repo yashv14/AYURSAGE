@@ -121,3 +121,23 @@ The future `clinicalInput` schema must be generated from reviewed evidence, not 
 ## Prediction response gate
 
 Prediction storage/API mapping must preserve the callable's actual target identifiers, class identifiers/labels, and metadata. The API must not promise probabilities or confidence. Doctor-facing output stays unavailable until a complete successful run and required enrichment records exist. Patient-facing output stays unavailable until doctor approval.
+
+## Phase 4 implemented subset
+
+The identity, own-patient profile, consultation draft/input revision, administrator
+doctor onboarding, and assignment routes above are implemented. Access JWTs use HS256
+with configured issuer and short expiry. Refresh credentials are random opaque values;
+only SHA-256 token fingerprints are stored. Every successful refresh revokes and
+replaces the prior session. Use of a rotated token is treated as reuse and revokes its
+replacement chain. Logout revokes the presented session and descendants.
+
+Refresh and logout require an exact allowed `Origin`, a `SameSite=Strict` refresh
+cookie scoped to `/api/v1/auth`, and double-submit CSRF proof. Deployments use Secure
+cookies; local HTTP tests may explicitly disable Secure. Protected resource lookups
+hide cross-patient and unassigned-doctor existence with `404`.
+
+Input payload and provenance objects remain opaque and are never interpreted or sent
+to ML. Each accepted draft change creates a new `clinical_inputs` revision; it does
+not overwrite an older revision. Only `DRAFT` and `NEEDS_INFORMATION` are eligible.
+The latter state is schema-supported but no transition into it is exposed because the
+doctor request-information clinical policy belongs to a later phase.

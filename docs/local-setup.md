@@ -106,3 +106,32 @@ non-example environment files, and attempts to recreate `predict_single()`:
 ## Configuration
 
 Copy `.env.example` to `.env` for local overrides. Never commit `.env`. `ML_ENABLED` remains `false`; enabling it does not provide an implementation, and no placeholder prediction behavior exists.
+
+## Phase 4 identity configuration and bootstrap
+
+Set a unique `JWT_SECRET` of at least 32 random characters. Access JWTs default to a
+15-minute lifetime. Refresh credentials are opaque, rotating, HttpOnly cookies with
+`SameSite=Strict`; production deployments must keep `COOKIE_SECURE=true`. Refresh and
+logout requests must come from an exact `ALLOWED_ORIGINS` entry and send the readable
+`csrf_token` cookie value in `X-CSRF-Token`. Access tokens are sent only as Bearer
+credentials and are not stored in cookies.
+
+After migration, authorize the one-time administrator bootstrap with a random
+`ADMIN_BOOTSTRAP_TOKEN` of at least 32 characters, run the command below, then remove
+the token from the environment. The command refuses to run once any administrator
+exists and writes an audit event. It also creates the reviewed role rows if absent.
+
+```bash
+flask --app backend.app:create_app bootstrap-admin --email admin@example.test --password '<strong unique password>' --token "$ADMIN_BOOTSTRAP_TOKEN"
+```
+
+Only an authenticated administrator can onboard a verified doctor through
+`POST /api/v1/admin/doctors` or assign one through the assignment endpoint. Public
+registration always creates a patient and rejects any client-supplied role.
+
+Phase 4 deliberately provides no inference, prediction viewing, clinical review,
+approval, treatment, attachment, or report route. Patient clinical input is stored as
+an opaque versioned object because its V17 schema remains unverified. Doctor-authored
+input correction, doctor submission on behalf of a patient, post-submission
+cancellation, temporary unassignment policy, and all later clinical transitions remain
+unresolved and unavailable rather than being inferred here.
