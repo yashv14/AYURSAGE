@@ -36,7 +36,7 @@ def mysql_app():
         os.environ["DATABASE_URL"] = database_url
         os.environ["AYURSAGE_ALLOW_TEST_DOWNGRADE"] = "1"
         command.upgrade(Config("alembic.ini"), "head")
-        app = create_app({"TESTING": True, "DATABASE_URL": database_url, "ML_ENABLED": "false"})
+        app = create_app({"TESTING": True, "DATABASE_URL": database_url, "ML_ENABLED": "false", "JWT_SECRET": "synthetic-test-secret-at-least-32-characters", "COOKIE_SECURE": False})
         yield app
     finally:
         if app:
