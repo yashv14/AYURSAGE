@@ -3,6 +3,8 @@
 from flask import Flask
 
 from .health import health_blueprint
+from .api import api
+from .commands import register_commands
 from .config import database_options, environment
 from .database import db, configure_engine
 from .errors import register_errors
@@ -16,6 +18,10 @@ def create_app(config=None) -> Flask:
         app.config.update(config)
     if str(app.config["ML_ENABLED"]).lower() != "false":
         raise ValueError("ML integration is unavailable; ML_ENABLED must be false")
+    if not app.config.get("JWT_SECRET") or len(app.config["JWT_SECRET"]) < 32:
+        raise ValueError("JWT_SECRET must contain at least 32 characters")
+    if not app.config.get("ALLOWED_ORIGINS"):
+        raise ValueError("ALLOWED_ORIGINS must not be empty")
     app.config["SQLALCHEMY_DATABASE_URI"] = app.config["DATABASE_URL"]
     app.config["SQLALCHEMY_ENGINE_OPTIONS"] = database_options(
         app.config["DATABASE_URL"], testing=app.config.get("TESTING", False))
@@ -26,4 +32,6 @@ def create_app(config=None) -> Flask:
         configure_engine(db.engine)
     register_errors(app)
     app.register_blueprint(health_blueprint, url_prefix="/api/v1/health")
+    app.register_blueprint(api, url_prefix="/api/v1")
+    register_commands(app)
     return app

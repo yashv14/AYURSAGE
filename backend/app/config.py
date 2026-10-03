@@ -20,5 +20,12 @@ def database_options(value, *, testing=False):
 
 
 def environment():
+    origins = {item.strip() for item in os.environ.get("ALLOWED_ORIGINS", "http://localhost:5173").split(",") if item.strip()}
+    secret = os.environ.get("JWT_SECRET")
     return {"DATABASE_URL": os.environ.get("DATABASE_URL"),
-            "ML_ENABLED": os.environ.get("ML_ENABLED", "false")}
+            "ML_ENABLED": os.environ.get("ML_ENABLED", "false"),
+            "JWT_SECRET": secret, "JWT_ISSUER": "ayursage-api",
+            "ACCESS_TOKEN_SECONDS": int(os.environ.get("ACCESS_TOKEN_SECONDS", "900")),
+            "REFRESH_TOKEN_SECONDS": int(os.environ.get("REFRESH_TOKEN_SECONDS", "1209600")),
+            "COOKIE_SECURE": os.environ.get("COOKIE_SECURE", "true").lower() == "true",
+            "ALLOWED_ORIGINS": origins}
