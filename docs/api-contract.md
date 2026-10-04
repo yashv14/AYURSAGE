@@ -141,3 +141,16 @@ to ML. Each accepted draft change creates a new `clinical_inputs` revision; it d
 not overwrite an older revision. Only `DRAFT` and `NEEDS_INFORMATION` are eligible.
 The latter state is schema-supported but no transition into it is exposed because the
 doctor request-information clinical policy belongs to a later phase.
+
+## Phase 5 gated subset
+
+Submission, assigned-doctor prediction viewing and a blocked retry route are now
+present. Live submission returns `503 ML_UNAVAILABLE` without mutating the draft;
+the supplied artifact/source/checksum do not bypass missing runtime, reference or
+clinical-policy evidence. The internal atomic persistence path is tested with
+synthetic mocked services only. Its successful result remains pending doctor review;
+patients cannot read pending predictions. Retry returns
+`503 RETRY_POLICY_UNAPPROVED`. Readiness adds safe `mlBlockers` codes while preserving
+platform readiness semantics. See [Phase 5 evidence](phase5-evidence.md) for exact
+transport, idempotency, provenance and acceptance limitations. No review, approval,
+prescription generation or report-release operation is enabled.

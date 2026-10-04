@@ -1,7 +1,9 @@
 ﻿# AYURSAGE
 AYUR-SAGE: A Unified Machine Learning Framework For Explainable Ayurvedic Clinical Decision Support
 
-This repository is in its foundation phase. Clinical prediction is intentionally unavailable until the original frozen V17 artifact, `predict_single()` implementation, trusted checksum, dependency evidence, and authorized reference cases are supplied.
+Phase 4 identity and consultations are implemented. Phase 5 now includes an inference-only V17 extraction, candidate parity audit, and gated consultation persistence. Live clinical inference remains unavailable pending original runtime evidence, authorized reference cases and reviewed clinical policies.
+
+- [Phase 5 evidence, blockers and required file placement](docs/phase5-evidence.md)
 
 - [Architecture](docs/architecture.md)
 - [Implementation roadmap](docs/implementation-roadmap.md)
