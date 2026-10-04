@@ -304,3 +304,9 @@ def preserve_immutable_history(session, flush_context, instances):
                 raise ValueError("Submitted input requires a new revision")
         if isinstance(record, PredictionOutput):
             raise ValueError("Persisted raw output cannot be changed")
+        if isinstance(record, ModelVersion) and session.connection().execute(
+            select(PredictionRun.id).where(PredictionRun.model_version_id == record.id).limit(1)
+        ).first() is not None:
+            raise ValueError("Used model provenance cannot be changed")
+        if isinstance(record, EnrichmentResult):
+            raise ValueError("Persisted enrichment cannot be changed")

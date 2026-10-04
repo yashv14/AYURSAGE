@@ -8,6 +8,8 @@ from .commands import register_commands
 from .config import database_options, environment
 from .database import db, configure_engine
 from .errors import register_errors
+from .inference import DisabledInference
+from pathlib import Path
 
 
 def create_app(config=None) -> Flask:
@@ -18,6 +20,8 @@ def create_app(config=None) -> Flask:
         app.config.update(config)
     if str(app.config["ML_ENABLED"]).lower() != "false":
         raise ValueError("ML integration is unavailable; ML_ENABLED must be false")
+    app.extensions["inference"] = DisabledInference(
+        Path(__file__).resolve().parents[2] / "ml/artifacts/ayursage_model.pkl")
     if not app.config.get("JWT_SECRET") or len(app.config["JWT_SECRET"]) < 32:
         raise ValueError("JWT_SECRET must contain at least 32 characters")
     if not app.config.get("ALLOWED_ORIGINS"):

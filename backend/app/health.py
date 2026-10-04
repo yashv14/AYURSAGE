@@ -1,6 +1,6 @@
 """Non-sensitive process health endpoints."""
 
-from flask import Blueprint, jsonify, g
+from flask import Blueprint, jsonify, g, current_app
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -30,4 +30,6 @@ def readiness():
         pass
     return jsonify(data={"status": "ready" if ready else "unavailable",
                          "database": "ready" if ready else "unavailable",
-                         "ml": "unavailable"}, requestId=g.request_id), 200 if ready else 503
+                         "ml": "unavailable",
+                         "mlBlockers": current_app.extensions["inference"].blockers},
+                   requestId=g.request_id), 200 if ready else 503

@@ -103,6 +103,10 @@ non-example environment files, and attempts to recreate `predict_single()`:
 ./scripts/verify-foundation.sh
 ```
 
+The supplied original source and reproducible inference-only extraction are the
+only allowed callable locations. The guard verifies extraction syntax-tree equality against
+the checksum-bound source without importing ML packages or executing training.
+
 ## Configuration
 
 Copy `.env.example` to `.env` for local overrides. Never commit `.env`. `ML_ENABLED` remains `false`; enabling it does not provide an implementation, and no placeholder prediction behavior exists.
@@ -135,3 +139,11 @@ an opaque versioned object because its V17 schema remains unverified. Doctor-aut
 input correction, doctor submission on behalf of a patient, post-submission
 cancellation, temporary unassignment policy, and all later clinical transitions remain
 unresolved and unavailable rather than being inferred here.
+
+## Phase 5 local artifact and audit
+
+See [Phase 5 evidence and setup](phase5-evidence.md) for ignored artifact placement,
+checksum verification, the separate opt-in real-model audit, tested package versions
+and required evidence filenames. The disabled factory checks artifact integrity
+without deserialization. `ML_ENABLED=false` remains mandatory; training environment
+evidence and approved clinical contracts/references are not replaced by audit success.

@@ -1,0 +1,3 @@
+# Preserve the uploaded evidence bytes across Windows/Linux checkouts.
+ml/source/AyurSage_Training_v17.py -text
+ml/artifacts/*.pkl -text

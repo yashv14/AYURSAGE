@@ -1,6 +1,12 @@
 # Frozen V17 integration evidence and contract
 
-**Status:** Blocked pending original materials
+**Status:** Partially evidenced; live inference blocked
+
+**4 October 2026 update:** The artifact, source and user-authorized checksum are now
+supplied. The dated Phase 2 inventory below is historical. Current verified fields,
+candidate parity, tested runtime and unresolved evidence gates are recorded in
+[Phase 5 evidence](phase5-evidence.md). Original training runtime, authorized reference
+outputs and clinic-approved input/collection/enrichment policies remain missing.
 
 **Audit date:** 2 October 2026
 
