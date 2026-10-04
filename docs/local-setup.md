@@ -104,7 +104,7 @@ non-example environment files, and attempts to recreate `predict_single()`:
 ```
 
 The supplied original source and reproducible inference-only extraction are the
-only allowed callable locations. The guard verifies extraction equality against
+only allowed callable locations. The guard verifies extraction syntax-tree equality against
 the checksum-bound source without importing ML packages or executing training.
 
 ## Configuration

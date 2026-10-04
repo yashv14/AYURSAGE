@@ -18,7 +18,9 @@ Static review found automatic pip installation, plotting, training, dataset read
 artifact writes and demo behavior in the original training module. It is never
 imported by the application or audit harness. `scripts/extract_v17.py` selects only
 17 named constants/functions through AST inspection and reproduces the checked-in
-`backend/app/v17_callable.py`. Only `random.seed(seed)` changes to an invocation-local
+`backend/app/v17_callable.py`. Verification compares exact parsed syntax trees to
+avoid Python patch-version changes in AST formatter quote style; original source
+bytes remain checksum-bound. Only `random.seed(seed)` changes to an invocation-local
 `random = Random(seed)`; subsequent choices preserve their original sequence.
 `predict_single()` invokes the fitted transform, four selected classifiers,
 existing engine mappings and reasoning exactly once. Its optional confidence fields

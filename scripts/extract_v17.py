@@ -56,5 +56,12 @@ def adapter_text():
             + ast.unparse(tree) + '\n')
 
 
+def verify_adapter():
+    """Compare syntax exactly, independent of patch-version quote formatting."""
+    actual = (ROOT / "backend/app/v17_callable.py").read_text(encoding="utf-8")
+    return ast.dump(ast.parse(actual), include_attributes=False) == ast.dump(
+        ast.parse(adapter_text()), include_attributes=False)
+
+
 if __name__ == "__main__":
     (ROOT / "backend/app/v17_callable.py").write_text(adapter_text(), encoding="utf-8")

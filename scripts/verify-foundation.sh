@@ -26,7 +26,7 @@ if git grep -I -E -- '^[[:space:]]*def[[:space:]]+predict_single[[:space:]]*\(' 
 fi
 
 # The only serving copy must reproduce the checked original plus local RNG isolation.
-python -c 'from scripts.extract_v17 import ROOT, adapter_text; actual=(ROOT / "backend/app/v17_callable.py").read_text(encoding="utf-8"); expected=adapter_text(); exit(0 if actual == expected else 1)' || fail "frozen inference extraction differs"
+python -c 'from scripts.extract_v17 import verify_adapter; exit(0 if verify_adapter() else 1)' || fail "frozen inference extraction differs"
 
 if git grep -I -E -- 'DummyClassifier|dummy[[:space:]_-]*model' -- ':!docs/**' ':!AGENTS.md' ':!scripts/verify-foundation.sh' >/dev/null; then
   fail "dummy model code appears in the application"

@@ -12,7 +12,7 @@ import platform
 import random
 from time import perf_counter
 
-from scripts.extract_v17 import ROOT, selected_tree, adapter_text, SOURCE_SHA256
+from scripts.extract_v17 import ROOT, selected_tree, verify_adapter, SOURCE_SHA256
 from backend.app.inference import (load_verified_bundle, validate_bundle, validate_input,
                                   INPUTS, TARGETS, MODEL_SHA256, InferenceUnavailable)
 
@@ -22,8 +22,7 @@ def audit():
     import numpy as np
     import pandas as pd
     from backend.app.v17_callable import predict_single
-    require_text = (ROOT / "backend/app/v17_callable.py").read_text(encoding="utf-8")
-    assert require_text == adapter_text()
+    assert verify_adapter()
     namespace = {"pd": pd, "np": np, "random": random}
     exec(compile(selected_tree(), "<isolated-original-inference>", "exec"), namespace)
     source_tree = ast.parse((ROOT / "ml/source/AyurSage_Training_v17.py").read_bytes())

@@ -7,7 +7,7 @@ from backend.app.inference import (artifact_bytes, DisabledInference, InferenceU
     INPUTS, TARGETS, MODEL_SHA256, PIPELINE_VERSION, SOURCE_SHA256, ADAPTER_VERSION, validate_input)
 from backend.app.models import (ClinicalInput, Consultation, ModelVersion, PredictionRun,
                                PredictionOutput, EnrichmentResult)
-from scripts.extract_v17 import ROOT, adapter_text
+from scripts.extract_v17 import adapter_text, verify_adapter
 from tests.backend.test_phase4 import schema, register, login, make_user
 
 
@@ -66,7 +66,7 @@ def test_artifact_hash_precedes_any_deserialization(tmp_path):
 
 
 def test_extraction_is_reproducible_and_training_free():
-    assert (ROOT / "backend/app/v17_callable.py").read_text(encoding="utf-8") == adapter_text()
+    assert verify_adapter()
     import ast
     tree = ast.parse(adapter_text())
     functions = {node.name for node in tree.body if isinstance(node, ast.FunctionDef)}
