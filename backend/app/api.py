@@ -11,6 +11,8 @@ from .auth import (access_token, check_password_hash, create_refresh, hash_passw
 from .database import db, utcnow
 from .errors import ApiError
 from .models import AuditLog, ClinicalInput, Consultation, DoctorProfile, Patient, RefreshSession, Role, User
+from .processing import submit, run_view
+from .models import PredictionRun, EnrichmentResult
 
 api = Blueprint("api", __name__)
 
@@ -251,6 +253,45 @@ def put_input(consultation_id):
         db.session.rollback(); raise ApiError("STALE_VERSION", "Resource has changed", 409) from None
     return envelope({"inputRevision": {"id": revision.id, "revision": revision.revision},
                      "consultation": consultation_view(item)}, 201)
+
+
+@api.post("/consultations/<consultation_id>/submit")
+@require_auth("PATIENT")
+def submit_consultation(consultation_id):
+    item = patient_scope(consultation_id)
+    run = submit(item, body(), expected_version, audit)
+    return envelope({"consultation": consultation_view(item), "processingStatus": run_view(run)})
+
+
+@api.post("/consultations/<consultation_id>/prediction-runs")
+@require_auth("DOCTOR")
+def retry_inference(consultation_id):
+    patient_scope(consultation_id, doctor=True)
+    raise ApiError("RETRY_POLICY_UNAPPROVED", "Inference retry policy is not approved", 503)
+
+
+@api.get("/consultations/<consultation_id>/predictions")
+@require_auth("DOCTOR")
+def get_predictions(consultation_id):
+    item = patient_scope(consultation_id, doctor=True)
+    if item.state != "PENDING_DOCTOR_REVIEW":
+        raise ApiError("INVALID_STATE", "Consultation is not pending review", 409)
+    revision = db.session.scalar(select(ClinicalInput).where(ClinicalInput.consultation_id == item.id,
+        ClinicalInput.revision == item.current_input_revision))
+    run = db.session.scalar(select(PredictionRun).where(PredictionRun.input_id == revision.id,
+        PredictionRun.status == "SUCCEEDED").order_by(PredictionRun.completed_at.desc())) if revision else None
+    if run is None:
+        raise ApiError("ML_UNAVAILABLE", "Complete inference is unavailable", 503)
+    enrichment = db.session.scalars(select(EnrichmentResult).where(EnrichmentResult.prediction_run_id == run.id)).all()
+    from .inference import TARGETS
+    if {output.target_code for output in run.outputs} != set(TARGETS) or not enrichment or any(x.status != "SUCCEEDED" for x in enrichment):
+        raise ApiError("ML_UNAVAILABLE", "Complete inference is unavailable", 503)
+    return envelope({"run": run_view(run), "originalOutputs": {x.target_code: x.raw_result for x in run.outputs},
+        "enrichment": [{"engine": x.engine_name, "version": x.engine_version, "result": x.result} for x in enrichment],
+        "modelProvenance": {"checksum": run.model_version.checksum, "pipelineVersion": run.model_version.version,
+                            "adapterVersion": run.model_version.evidence.get("adapterVersion"),
+                            "sourceChecksum": run.model_version.evidence.get("sourceChecksum")},
+        "reviewStatus": "PENDING_DOCTOR_REVIEW"})
 
 
 @api.post("/admin/doctors")

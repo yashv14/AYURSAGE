@@ -5,6 +5,8 @@ __pycache__/
 .coverage
 htmlcov/
 .venv/
+.venv-v17-audit/
+.phase5-test-temp/
 venv/
 
 # Node/Vite
@@ -29,4 +31,3 @@ uploads/
 *.pkl
 *.pickle
 *.joblib
-*.pkl
