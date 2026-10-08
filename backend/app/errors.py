@@ -3,6 +3,7 @@ from uuid import uuid4
 
 from flask import g, jsonify
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
+from sqlalchemy.orm.exc import StaleDataError
 from werkzeug.exceptions import HTTPException
 
 from .database import db
@@ -55,6 +56,11 @@ def register_errors(app):
     def integrity_error(error):
         db.session.rollback()
         return error_response("CONFLICT", "Operation conflicts with stored state", 409)
+
+    @app.errorhandler(StaleDataError)
+    def stale_error(error):
+        db.session.rollback()
+        return error_response("STALE_VERSION", "Resource has changed", 409)
 
     @app.errorhandler(Exception)
     def unexpected_error(error):

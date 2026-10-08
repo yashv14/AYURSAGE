@@ -316,9 +316,13 @@ def onboard_doctor():
 @api.post("/admin/consultations/<consultation_id>/assignment")
 @require_auth("ADMIN")
 def assign_doctor(consultation_id):
-    payload = body(); item = db.session.get(Consultation, consultation_id)
+    payload = body()
+    item = db.session.scalar(select(Consultation).where(Consultation.id == consultation_id)
+                             .with_for_update().execution_options(populate_existing=True))
     if item is None: raise ApiError("NOT_FOUND", "Consultation was not found", 404)
     expected_version(payload, item)
+    if item.state in {"APPROVED", "REJECTED", "CANCELLED"}:
+        raise ApiError("INVALID_STATE", "Terminal consultations cannot be reassigned", 409)
     reason = payload.get("reason")
     if not isinstance(reason, str) or not reason.strip(): raise ApiError("INVALID_FIELD", "Reason is required", 422)
     doctor = db.session.get(User, payload.get("doctorId"))

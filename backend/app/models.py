@@ -3,7 +3,7 @@ from uuid import uuid4
 
 from sqlalchemy import CheckConstraint, ForeignKeyConstraint, UniqueConstraint
 from sqlalchemy.orm import declared_attr
-from sqlalchemy import event, select
+from sqlalchemy import event, select, inspect
 from sqlalchemy.orm import Session
 
 from .database import db, UTCDateTime, utcnow
@@ -167,6 +167,10 @@ class DoctorReview(Record, Versioned, db.Model):
     status = db.Column(db.String(16), nullable=False, default="IN_PROGRESS")
     expected_consultation_version = db.Column(db.Integer, nullable=False)
     completed_at = db.Column(UTCDateTime())
+    # Nullable for untouched pre-Phase-6 records; new APIs require all three.
+    revision = db.Column(db.Integer)
+    source_snapshot = db.Column(db.JSON)
+    source_checksum = db.Column(db.String(64))
     consultation = db.relationship(Consultation)
     input = db.relationship(ClinicalInput, foreign_keys=[input_id], overlaps="consultation")
     run = db.relationship(PredictionRun, foreign_keys=[prediction_run_id], overlaps="input")
@@ -177,6 +181,9 @@ class DoctorReview(Record, Versioned, db.Model):
         ForeignKeyConstraint(["prediction_run_id", "input_id"], ["prediction_runs.id", "prediction_runs.input_id"], ondelete="RESTRICT"),
         states("status", "IN_PROGRESS COMPLETED APPROVED SUPERSEDED"),
         UniqueConstraint("id", "consultation_id"),
+        UniqueConstraint("consultation_id", "revision", name="uq_doctor_reviews_consultation_revision"),
+        CheckConstraint("revision IS NULL OR revision > 0", name="positive_revision"),
+        CheckConstraint("source_checksum IS NULL OR length(source_checksum) = 64", name="source_checksum_length"),
         CheckConstraint("expected_consultation_version > 0", name="positive_expected_version"))
 
 
@@ -187,6 +194,7 @@ class ReviewDecision(Record, db.Model):
     action = db.Column(db.String(16), nullable=False)
     content = db.Column(db.JSON(none_as_null=True))
     reason = db.Column(db.Text)
+    original_result = db.Column(db.JSON)
     review = db.relationship(DoctorReview)
     __table_args__ = (UniqueConstraint("doctor_review_id", "target_code"),
                       states("action", "ACCEPT EDIT OVERRIDE"),
@@ -212,14 +220,31 @@ class Approval(Record, db.Model):
     snapshot = db.Column(db.JSON, nullable=False)
     checksum = db.Column(db.String(64), nullable=False)
     approved_at = db.Column(UTCDateTime(), nullable=False)
+    idempotency_key = db.Column(db.String(128))
+    request_checksum = db.Column(db.String(64))
     review = db.relationship(DoctorReview, foreign_keys=[doctor_review_id], overlaps="consultation")
     consultation = db.relationship(Consultation, foreign_keys=[consultation_id])
     approver = db.relationship(User)
     __table_args__ = (UniqueConstraint("consultation_id", "version"),
+                      UniqueConstraint("consultation_id", "approver_id", "idempotency_key", name="uq_approvals_actor_key"),
+                      CheckConstraint("request_checksum IS NULL OR length(request_checksum) = 64", name="request_checksum_length"),
                       ForeignKeyConstraint(["doctor_review_id", "consultation_id"],
                                            ["doctor_reviews.id", "doctor_reviews.consultation_id"], ondelete="RESTRICT"),
                       CheckConstraint("version > 0", name="positive_version"),
                       CheckConstraint("length(checksum) = 64", name="checksum_length"))
+
+
+class InformationRequest(Record, db.Model):
+    __tablename__ = "information_requests"
+    consultation_id = fk("consultations", nullable=False, index=True)
+    input_id = db.Column(db.String(36), nullable=False)
+    doctor_id = fk("users", nullable=False)
+    reason = db.Column(db.Text, nullable=False)
+    requested_fields = db.Column(db.JSON, nullable=False)
+    __table_args__ = (
+        ForeignKeyConstraint(["input_id", "consultation_id"],
+                             ["clinical_inputs.id", "clinical_inputs.consultation_id"], ondelete="RESTRICT"),
+        CheckConstraint("length(trim(reason)) > 0", name="reason_required"),)
 
 
 class FileMetadata(Record, db.Model):
@@ -289,13 +314,19 @@ class AuditLog(Record, db.Model):
 def preserve_immutable_history(session, flush_context, instances):
     for record in session.deleted:
         if isinstance(record, (ClinicalInput, PredictionRun, PredictionOutput, EnrichmentResult,
-                               DoctorReview, ReviewDecision, Prescription, Approval, Report, AuditLog)):
+                               DoctorReview, ReviewDecision, Prescription, Approval, Report, AuditLog, InformationRequest)):
             raise ValueError("Clinical history deletion is unavailable pending retention policy")
     for record in session.dirty:
         if not session.is_modified(record, include_collections=False):
             continue
-        if isinstance(record, (Approval, AuditLog, Role)):
+        if isinstance(record, (Approval, AuditLog, Role, InformationRequest, ReviewDecision, Prescription)):
             raise ValueError("Immutable record cannot be changed")
+        if isinstance(record, DoctorReview):
+            changed = {attr.key for attr in inspect(record).attrs if attr.history.has_changes()}
+            old_status = session.connection().execute(
+                select(DoctorReview.__table__.c.status).where(DoctorReview.__table__.c.id == record.id)).scalar()
+            if changed - {"status", "row_version", "updated_at"} or old_status in {"APPROVED", "SUPERSEDED"}:
+                raise ValueError("Review content requires a new revision")
         if isinstance(record, ClinicalInput):
             submitted = session.connection().execute(
                 select(ClinicalInput.__table__.c.submitted_at).where(ClinicalInput.__table__.c.id == record.id)

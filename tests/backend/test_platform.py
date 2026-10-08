@@ -73,7 +73,8 @@ def test_readiness_requires_expected_schema(app):
         db.session.commit()
     assert app.test_client().get("/api/v1/health/ready").status_code == 503
     with app.app_context():
-        db.session.execute(text("UPDATE alembic_version SET version_num='0001_platform'"))
+        from backend.app.health import SCHEMA_REVISION
+        db.session.execute(text("UPDATE alembic_version SET version_num=:revision"), {"revision": SCHEMA_REVISION})
         db.session.commit()
     response = app.test_client().get("/api/v1/health/ready")
     assert response.status_code == 200
