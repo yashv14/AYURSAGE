@@ -79,7 +79,7 @@ that disposable server. Never provide production credentials. CI runs the Docker
 wrapper and fails if integration checks cannot execute.
 
 Readiness at `/api/v1/health/ready` returns `200` only when the database is reachable
-and its Alembic revision is `0002_doctor_review`; otherwise it returns `503`.
+and its Alembic revision is `0003_approved_reports`; otherwise it returns `503`.
 The JSON always reports `ml: unavailable`. This is platform readiness, not clinical
 readiness. Liveness keeps its existing `{status: "ok"}` response. Every response
 includes `X-Request-ID`; safe errors include the same ID in their JSON body.
@@ -166,4 +166,6 @@ Review routes, payloads, policy blockers and amendment proposal are described in
 [Phase 6 acceptance](phase6-acceptance.md) and [the API contract](api-contract.md).
 Readiness includes `clinicalApproval: unavailable` and the missing-policy blocker.
 There is no approval-enabling environment flag. Approved patient views return only
-the immutable signed content projection, and no PDF/report release is implemented.
+the immutable approved content projection. Phase 7 adds private PDF report software;
+see [report configuration and acceptance](phase7-reports.md). Live clinical release
+remains blocked by the existing Phase 5/6 evidence gates.
