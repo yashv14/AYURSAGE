@@ -5,6 +5,7 @@ from threading import Lock
 import unicodedata
 from pathlib import Path
 from hashlib import sha256
+import os
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
@@ -17,7 +18,7 @@ from .inference import TARGETS
 from .storage import MAX_PDF_BYTES
 
 TEMPLATE_VERSION = "approved-patient-v1"
-FONT_PATH = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+FONT_PATH = os.environ.get("REPORT_FONT_PATH", "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf")
 FONT_SHA256 = "57f73e11f51999432bf7ab22ce55b6f945d5eca1bf824404cfa9ec2e3718c84e"
 FONT_LOCK = Lock()
 FIELDS = {TARGETS[0]: ("category", "reasoning"),

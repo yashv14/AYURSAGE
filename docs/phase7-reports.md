@@ -33,8 +33,8 @@ Template/report version is `approved-patient-v1`. DejaVu Sans is embedded from
 `REPORT_FONT_PATH` (default `/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf`). Template
 v1 pins font SHA-256
 `57f73e11f51999432bf7ab22ce55b6f945d5eca1bf824404cfa9ec2e3718c84e`.
-Install the matching licensed font through the OS package manager (`fonts-dejavu-core`
-on Ubuntu); do not commit font binaries. A different font/version requires a new
+Prepare the exact licensed template font with the verified helper below; do not
+assume distro packages contain identical bytes or commit font binaries. A different font/version requires a new
 reviewed template. Covered LTR Latin, Greek, Cyrillic and font-covered symbols are
 supported; missing glyphs, bidi/complex-script letters (including Devanagari) and
 hidden format/control characters are rejected. Shaping/Indic support is future
@@ -57,8 +57,25 @@ Configure local development:
 ```bash
 export REPORT_STORAGE_BACKEND=local
 export REPORT_LOCAL_ROOT=/workspace/ayursage-private-reports
-export REPORT_FONT_PATH=/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf
+python -m scripts.prepare_report_font --output /workspace/ayursage-template-fonts/DejaVuSans.ttf
+export REPORT_FONT_PATH=/workspace/ayursage-template-fonts/DejaVuSans.ttf
 ```
+
+The Linux helper downloads the fixed Debian `fonts-dejavu-core_2.37-8_all.deb`
+over HTTPS, verifies package SHA-256
+`86635b3d25b3655fc11cb3ecc3af59f0bf19643b02b94f2de48bd10253cdba12`,
+uses `dpkg-deb --extract` without installing packages or executing maintainer scripts,
+then verifies the unchanged v1 font checksum before atomically publishing it.
+An already matching destination is reused; a mismatched existing file/symlink is
+rejected without overwriting it. CI runs the same helper and exports `REPORT_FONT_PATH`
+through `GITHUB_ENV` for both the Flask configuration and standalone PDF renderer.
+
+This repairs a reproduced Debian/Ubuntu mismatch: Ubuntu's package of the same
+name/version contains font SHA-256
+`ae7b7855e115a5966d8b1b3f80f254ccc117ec86f9965e202ee2940453837280`,
+which correctly fails the v1 template's integrity check. OS package name/version
+alone is not a byte-level font identity. Integrity checks, template version and
+canonical font bytes were preserved; no fallback or checksum exemption was added.
 
 The local root must be an operator-owned private directory, outside the repository,
 static/frontend/public paths, with no group/other permissions. The adapter creates
@@ -180,13 +197,16 @@ Unicode/escaping/long content, Azure SDK-double privacy/conflict failures, MySQL
 concurrent claims, expired-lease fencing, authority revocation during IO, legacy
 upgrade preservation and migration drift/round-trip compatibility.
 
-Observed final validation: **88 backend tests passed**; **16 disposable MySQL
+Observed validation after the CI font portability correction: **90 backend tests passed**; **16 disposable MySQL
 integration tests passed** (including five new Phase 7 migration/concurrency/recovery
 checks); frontend production build, foundation safety guard, dependency consistency,
 document-link and whitespace checks passed. Both sample PDFs passed projection text
 verification and all five pages passed visual inspection. The MySQL wrapper removed
 its unique temporary project; no user database or persistent development volume was
-used for synthetic approvals.
+used for synthetic approvals. These reruns explicitly used the helper-prepared font
+via `REPORT_FONT_PATH`, and two regression checks enforce rejection of tampered font
+files/packages and symlink destinations. Hosted CI results must be checked separately;
+local passes do not establish a green GitHub run.
 
 Actual Azure connectivity/RBAC and real-model clinical end-to-end workflow were not
 run. Original model is absent from this checkout, and original runtime evidence,

@@ -30,7 +30,10 @@ jobs:
             backend/requirements.txt
             backend/constraints.txt
       - run: python -m pip install --requirement backend/requirements-dev.txt
-      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends fonts-dejavu-core
+      - name: Prepare verified PDF template font
+        run: |
+          python -m scripts.prepare_report_font --output "$RUNNER_TEMP/ayursage-font/DejaVuSans.ttf"
+          echo "REPORT_FONT_PATH=$RUNNER_TEMP/ayursage-font/DejaVuSans.ttf" >> "$GITHUB_ENV"
       - run: python -m pytest tests/backend
 
   mysql:
@@ -47,7 +50,10 @@ jobs:
             backend/requirements.txt
             backend/constraints.txt
       - run: python -m pip install --requirement backend/requirements-dev.txt
-      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends fonts-dejavu-core
+      - name: Prepare verified PDF template font
+        run: |
+          python -m scripts.prepare_report_font --output "$RUNNER_TEMP/ayursage-font/DejaVuSans.ttf"
+          echo "REPORT_FONT_PATH=$RUNNER_TEMP/ayursage-font/DejaVuSans.ttf" >> "$GITHUB_ENV"
       - run: python -m scripts.test_mysql
 
   frontend:
