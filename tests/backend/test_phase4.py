@@ -101,14 +101,14 @@ def test_access_token_expiry_and_inactive_account_are_enforced(app):
 
 def test_refresh_rotation_logout_and_reuse_revoke_chain(app):
     client = app.test_client(); register(client, "patient@example.test"); login(client, "patient@example.test")
-    csrf = client.get_cookie("csrf_token", path="/api/v1/auth").value
+    csrf = client.get_cookie("csrf_token", path="/").value
     proof = {"Origin": "http://localhost:5173", "X-CSRF-Token": csrf}
     old_refresh = client.get_cookie("refresh_token", path="/api/v1/auth").value
     rotated = client.post("/api/v1/auth/refresh", headers=proof)
     assert rotated.status_code == 200
     new_refresh = client.get_cookie("refresh_token", path="/api/v1/auth").value
     client.set_cookie("refresh_token", old_refresh, path="/api/v1/auth")
-    client.set_cookie("csrf_token", "reuse-proof", path="/api/v1/auth")
+    client.set_cookie("csrf_token", "reuse-proof", path="/")
     reused = client.post("/api/v1/auth/refresh", headers={"Origin": "http://localhost:5173", "X-CSRF-Token": "reuse-proof"})
     assert reused.status_code == 401 and reused.json["error"]["code"] == "REFRESH_REUSE"
     client.set_cookie("refresh_token", new_refresh, path="/api/v1/auth")
@@ -120,7 +120,25 @@ def test_refresh_rotation_logout_and_reuse_revoke_chain(app):
 def test_refresh_requires_origin_and_csrf_and_logout_revokes(app):
     client = app.test_client(); register(client, "patient@example.test"); login(client, "patient@example.test")
     assert client.post("/api/v1/auth/refresh").status_code == 403
-    csrf = client.get_cookie("csrf_token", path="/api/v1/auth").value
+    csrf = client.get_cookie("csrf_token", path="/").value
     assert client.post("/api/v1/auth/logout", headers={"Origin": "http://localhost:5173", "X-CSRF-Token": csrf}).status_code == 204
     with app.app_context():
         assert db.session.scalar(select(RefreshSession)).revoked_at is not None
+
+
+def test_browser_csrf_scope_and_legacy_cleanup(app):
+    client = app.test_client()
+    register(client, "browser@example.test")
+    client.set_cookie("csrf_token", "legacy", path="/api/v1/auth")
+    response, _ = login(client, "browser@example.test")
+    refresh = client.get_cookie("refresh_token", path="/api/v1/auth")
+    csrf = client.get_cookie("csrf_token", path="/")
+    assert refresh.http_only and not csrf.http_only
+    assert client.get_cookie("csrf_token", path="/api/v1/auth") is None
+    assert "HttpOnly" in next(v for v in response.headers.getlist("Set-Cookie") if v.startswith("refresh_token="))
+    proof = {"Origin": "http://localhost:5173", "X-CSRF-Token": csrf.value}
+    assert client.post("/api/v1/auth/refresh", headers=proof).status_code == 200
+    proof["X-CSRF-Token"] = client.get_cookie("csrf_token", path="/").value
+    assert client.post("/api/v1/auth/logout", headers=proof).status_code == 204
+    assert client.get_cookie("csrf_token", path="/") is None
+    assert client.get_cookie("refresh_token", path="/api/v1/auth") is None
