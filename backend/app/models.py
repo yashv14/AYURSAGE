@@ -273,12 +273,18 @@ class Report(Record, Versioned, db.Model):
     file_id = fk("file_metadata", unique=True)
     failure_code = db.Column(db.String(64))
     retry_count = db.Column(db.Integer, nullable=False, default=0)
+    # Legacy rows remain null and cannot be released without verified provenance.
+    snapshot_checksum = db.Column(db.String(64))
+    template_version = db.Column(db.String(64))
+    generation_token = db.Column(db.String(36))
+    lease_expires_at = db.Column(UTCDateTime())
     approval = db.relationship(Approval)
     file = db.relationship(FileMetadata)
     __table_args__ = (UniqueConstraint("approval_id", "version"),
                       CheckConstraint("row_version > 0", name="positive_version"),
                       states("status", "PENDING GENERATING READY FAILED"),
                       CheckConstraint("retry_count >= 0", name="nonnegative_retries"),
+                      CheckConstraint("snapshot_checksum IS NULL OR length(snapshot_checksum) = 64", name="snapshot_checksum_length"),
                       CheckConstraint("status <> 'READY' OR file_id IS NOT NULL", name="ready_requires_file"))
 
 
@@ -341,3 +347,11 @@ def preserve_immutable_history(session, flush_context, instances):
             raise ValueError("Used model provenance cannot be changed")
         if isinstance(record, EnrichmentResult):
             raise ValueError("Persisted enrichment cannot be changed")
+        if isinstance(record, FileMetadata):
+            raise ValueError("Persisted file metadata cannot be changed")
+        if isinstance(record, Report):
+            changed = {attr.key for attr in inspect(record).attrs if attr.history.has_changes()}
+            old_status = session.connection().execute(select(Report.__table__.c.status)
+                .where(Report.__table__.c.id == record.id)).scalar()
+            if old_status == "READY" or changed & {"approval_id", "version", "object_key", "snapshot_checksum", "template_version"}:
+                raise ValueError("Report identity and released metadata are immutable")

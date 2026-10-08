@@ -6,7 +6,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from .database import db
 
-SCHEMA_REVISION = "0002_doctor_review"
+SCHEMA_REVISION = "0003_approved_reports"
 
 health_blueprint = Blueprint("health", __name__)
 

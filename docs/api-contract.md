@@ -203,4 +203,24 @@ It requires `expectedRowVersion` and nonblank `reason` (maximum 2,000 characters
 Optional `requestedFields` is a unique array of the evidenced Phase 5 input names.
 It returns `201 {consultation,informationRequestId}`, supersedes prior eligible
 reviews, and preserves the submitted input. The patient input route creates a new
-revision. No post-approval correction, amendment, PDF or report route is enabled.
+revision. No post-approval correction or amendment route is enabled. The Phase 7
+report routes below supersede this Phase 6 record's earlier report limitation.
+
+## Phase 7 report transport
+
+All routes require an active owning patient or active verified assigned doctor.
+Admins receive 403; outside ownership/assignment scope receives 404. The consultation
+must be APPROVED and the exact approval snapshot must pass integrity/provenance
+checks. Report generation never invokes inference or creates an approval.
+
+| Route | Request / response |
+|---|---|
+| `POST /consultations/{id}/reports` | Exact body `{approvalId, reportVersion: "approved-patient-v1"}`. Approval/version uniqueness is the database-enforced idempotency equivalent. First success 201, existing READY or recovered retry 200, active generation lease 409 `REPORT_GENERATING`. Unknown fields/versions 422. No client paths, template flags or synthetic bypass. |
+| `GET /reports/{id}` | 200 `{report}` containing opaque ID, approval ID, report/template version, snapshot checksum, lifecycle status, safe failure code, retry count and file checksum when recorded. READY metadata is returned only after current file integrity verification. No storage keys, paths or URLs. |
+| `GET /reports/{id}/download` | Backend PDF attachment, safe `ayursage-report-{UUID}.pdf` filename, `application/pdf`, `Cache-Control: no-store`, `X-Content-Type-Options: nosniff`. File size/checksum and authorization verified before returning bytes. No public URL, SAS, conditional caching or range-download API. |
+
+Missing/nonapproved resources return 404. Invalid snapshot/provenance, unavailable
+storage, failed generation, non-READY file or mismatched file integrity return safe
+503 codes. Approval-state/idempotency semantics are independent of report recovery;
+failure never invalidates or modifies an approval. See
+[Phase 7 storage and recovery](phase7-reports.md) for lease/reconciliation details.
