@@ -79,7 +79,7 @@ that disposable server. Never provide production credentials. CI runs the Docker
 wrapper and fails if integration checks cannot execute.
 
 Readiness at `/api/v1/health/ready` returns `200` only when the database is reachable
-and its Alembic revision is `0001_platform`; otherwise it returns `503`.
+and its Alembic revision is `0002_doctor_review`; otherwise it returns `503`.
 The JSON always reports `ml: unavailable`. This is platform readiness, not clinical
 readiness. Liveness keeps its existing `{status: "ok"}` response. Every response
 includes `X-Request-ID`; safe errors include the same ID in their JSON body.
@@ -147,3 +147,23 @@ checksum verification, the separate opt-in real-model audit, tested package vers
 and required evidence filenames. The disabled factory checks artifact integrity
 without deserialization. `ML_ENABLED=false` remains mandatory; training environment
 evidence and approved clinical contracts/references are not replaced by audit success.
+
+## Phase 6 review schema and checks
+
+Apply the additive `0002_doctor_review` migration explicitly after normal backup and
+review: `python -m alembic upgrade head`. It preserves old records and leaves their
+new provenance fields null. It does not fabricate review revisions or historical
+approval evidence. No migration runs during application startup.
+
+Run backend checks with `python -m pytest tests/backend`; run MySQL migration,
+transaction and concurrency checks with `python -m scripts.test_mysql`. The latter
+starts a fresh random Docker project with disposable storage and cleans it up. It
+never reuses `DATABASE_URL` as an integration-test database. Docker Desktop must be
+running. Synthetic approval tests mock the missing clinical-policy verifier; that
+does not enable live approval or prove real-model end-to-end readiness.
+
+Review routes, payloads, policy blockers and amendment proposal are described in
+[Phase 6 acceptance](phase6-acceptance.md) and [the API contract](api-contract.md).
+Readiness includes `clinicalApproval: unavailable` and the missing-policy blocker.
+There is no approval-enabling environment flag. Approved patient views return only
+the immutable signed content projection, and no PDF/report release is implemented.

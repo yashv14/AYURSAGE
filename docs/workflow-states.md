@@ -79,3 +79,22 @@ Report retries reuse the immutable approval snapshot and deterministic report id
 - Exactly one approval may bind a review; duplicate clicks are idempotent or return a conflict.
 - No patient-facing approved content or report exists before approval.
 - Technical failure exposes a safe failure/retry state and never fabricates output.
+
+## Phase 6 persistence semantics
+
+Each draft save inserts a new immutable-content review revision. The prior eligible
+review becomes `SUPERSEDED`; its decisions and notes are retained unchanged. The new
+review is `IN_PROGRESS` or `COMPLETED` according to target/notes completeness. A
+completed draft still requires explicit approval and clinical-policy verification.
+
+Approval locks and rechecks authority, consultation version, exact current input/run
+and latest review revision. Its immutable snapshot, checksum, audit and both APPROVED
+states commit together. Exact approval replays are idempotent and never create a
+second snapshot. Default live approval is blocked by missing clinical policy.
+
+The assigned doctor may request information before approval, moving the case to
+`NEEDS_INFORMATION` and superseding reviewability of the old revision. The owning
+patient creates a new input revision; fresh inference/review is required. Live
+inference remains gated. APPROVED is terminal: corrections and reassignment are
+rejected until an amendment policy is approved. See the concrete proposal and
+verification limits in [Phase 6 acceptance](phase6-acceptance.md).

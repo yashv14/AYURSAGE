@@ -76,9 +76,9 @@ Fields below are application/transport fields. `clinicalInput` and raw `result` 
 | `POST /consultations/{id}/submit` | `{expectedRowVersion, inputRevision}` plus idempotency key | `200 {consultation, processingStatus}` | Owning patient; eligible current revision. |
 | `POST /consultations/{id}/prediction-runs` | `{inputRevision, reason}` plus idempotency key | `201 {predictionRun}` | Internal/explicitly authorized retry policy; never a detached public prediction endpoint. Returns `503` while V17 unavailable. |
 | `GET /consultations/{id}/predictions` | None | `200 {run, originalOutputs, enrichment}` | Assigned doctor only; patient cannot read pending raw output. |
-| `POST /consultations/{id}/review` | `{expectedRowVersion, inputRevision, predictionRunId, decisions, careNotes, prescription?}` | `200 {review}` | Assigned doctor; current `PENDING_DOCTOR_REVIEW` case. Decision target codes remain evidence-bound. |
+| `POST /consultations/{id}/review` | `{expectedRowVersion, expectedReviewRevision, inputRevision, predictionRunId, decisions, careNotes, careNotesCompleted, prescription?}` | `201 {review, consultation}` | Active verified assigned doctor; current `PENDING_DOCTOR_REVIEW` case. Each save creates a new review revision. |
 | `POST /consultations/{id}/request-information` | `{expectedRowVersion, reason, requestedFields?}` | `200 {consultation}` | Assigned doctor; reviewable case. |
-| `POST /consultations/{id}/approve` | `{expectedRowVersion, reviewId}` plus idempotency key | `201 {approval}` | Assigned doctor; current completed review only. |
+| `POST /consultations/{id}/approve` | `{expectedRowVersion, reviewId, reviewRevision}` plus idempotency key | `201/200 {approval}` | Assigned doctor; current completed review and verified clinical policy required. Currently gated with 503. |
 | `POST /consultations/{id}/reject` | `{expectedRowVersion, reason}` | `200 {consultation}` | Assigned doctor; reviewable case; reason required. |
 | `POST /consultations/{id}/reports` | `{approvalId, reportVersion}` plus idempotency key | `201/200 {report}` | Owning patient or assigned doctor for approved version; retry reuses identity. |
 | `GET /reports/{id}/download` | None | PDF stream | Owning patient or assigned doctor; report `READY`; no public caching. |
@@ -154,3 +154,53 @@ patients cannot read pending predictions. Retry returns
 platform readiness semantics. See [Phase 5 evidence](phase5-evidence.md) for exact
 transport, idempotency, provenance and acceptance limitations. No review, approval,
 prescription generation or report-release operation is enabled.
+
+## Phase 6 implemented transport
+
+Phase 6 supersedes the Phase 5 statement about review/approval routes above. Live
+inference remains gated; live approval also requires the missing clinical policy.
+The full implementation and acceptance boundaries are documented in
+[Phase 6 acceptance](phase6-acceptance.md).
+
+Additional routes:
+
+| Route | Response and scope |
+|---|---|
+| `GET /doctor/review-queue?limit=25&cursor=...` | Active verified doctor's assigned pending consultations. `limit` is 1–100; opaque UUID cursor; `{items,nextCursor}`. |
+| `GET /consultations/{id}/review-context` | Assigned doctor only; consultation version, exact input/run, original outputs including actual optional confidence, deterministic enrichment, safe provenance and latest review. |
+| `GET /consultations/{id}/review?revision=N` | Assigned doctor only; latest review by default, or an exact historical positive review revision. |
+| `GET /consultations/{id}/approved` | Owning patient or assigned doctor; approved patient projection only, with approval identity/version/timestamp. No raw confidence or internal review history. |
+| `GET /consultations/{id}/information-request` | Owning patient or assigned doctor in `NEEDS_INFORMATION`; doctor-authored reason and requested input fields. |
+
+Review save is a full draft replacement expressed as a **new** revision. Initial
+`expectedReviewRevision` is 0; later saves must match the latest revision. The
+consultation's `expectedRowVersion` must also match. A new review ID is returned for
+each save. Save responses include the updated consultation version. Missing/unknown
+fields, duplicate targets and non-integer/boolean versions are rejected.
+
+`decisions` may be partial while drafting; each item is `{targetCode,action}` for
+ACCEPT or `{targetCode,action,content,reason}` for EDIT/OVERRIDE. `content` is nonblank
+doctor-authored text (maximum 16,000 characters), and change reasons are nonblank text
+(maximum 2,000). ACCEPT cannot include a client replacement/reason. No clinical
+category or medication schema is inferred from these free-text transport fields.
+
+`careNotes` is text (maximum 16,000 characters; may be blank in an incomplete draft).
+`careNotesCompleted` is an explicit boolean. True requires nonblank notes.
+`prescription` is optional nonblank doctor-authored text (maximum 16,000 characters)
+or null. The exact V17 pending-review placeholder is rejected. All four target
+decisions plus completed care notes derive COMPLETED status; clients cannot set status.
+Review API bodies are limited to 128 KiB and responses use `Cache-Control: no-store`.
+
+Approval first creation returns 201; an authorized exact replay returns 200. The
+idempotency key is scoped to actor/consultation/approval operation and fingerprints
+all three request fields. A conflicting key/body or stale state/revision returns 409.
+Otherwise valid live attempts currently return `503 CLINICAL_REVIEW_POLICY_UNAPPROVED`.
+Patients/admins receive 403; unassigned doctors receive 404. No request field or
+environment flag can enable missing policy or inference evidence.
+
+`POST .../request-information` implements the outlined assigned-doctor transition.
+It requires `expectedRowVersion` and nonblank `reason` (maximum 2,000 characters).
+Optional `requestedFields` is a unique array of the evidenced Phase 5 input names.
+It returns `201 {consultation,informationRequestId}`, supersedes prior eligible
+reviews, and preserves the submitted input. The patient input route creates a new
+revision. No post-approval correction, amendment, PDF or report route is enabled.

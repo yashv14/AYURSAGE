@@ -61,6 +61,15 @@ errors 500 without SQL, credentials or exception text. Request IDs are server ge
 
 ## Evidence and operation
 
+Phase 6 adds `0002_doctor_review` on top of `0001_platform`. Review revisions are new
+rows with source snapshots/checksums; decisions and notes are immutable per revision.
+Approval adds actor-scoped idempotency and request checksums. New columns are nullable
+for unchanged legacy records, which are not silently promoted to verified reviews.
+The new information-request table separates clinical instructions from safe audit
+metadata. See [Phase 6 acceptance](phase6-acceptance.md) for transaction ordering,
+concurrency evidence and policy limitations. Platform readiness now requires this
+single new Alembic head.
+
 [Local setup](local-setup.md) documents migration and disposable-test commands.
 The integration suite uses real MySQL and compares live schema to ORM metadata,
 tests constraints, timezone conversion and stale writes, and performs an
