@@ -88,11 +88,14 @@ includes `X-Request-ID`; safe errors include the same ID in their JSON body.
 
 ```bash
 cd frontend
-npm install
+npm ci
 npm run dev
 ```
 
 Open <http://localhost:5173>. Build the production assets with `npm run build`.
+The Vite development server proxies `/api` to the local Flask backend.
+See [Phase 8 frontend](phase8-frontend.md) for role workflows, session configuration
+and disposable browser integration checks.
 
 ## Foundation safety check
 

@@ -31,3 +31,7 @@ uploads/
 *.pkl
 *.pickle
 *.joblib
+
+# Browser test outputs (may include synthetic clinical text)
+frontend/test-results/
+frontend/playwright-report/

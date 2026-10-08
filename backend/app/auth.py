@@ -94,11 +94,14 @@ def set_session_cookies(response, raw=None):
     settings = dict(secure=current_app.config["COOKIE_SECURE"], samesite="Strict", path="/api/v1/auth")
     if raw is None:
         response.delete_cookie("refresh_token", httponly=True, **settings)
-        response.delete_cookie("csrf_token", **settings)
+        response.delete_cookie("csrf_token", **settings)  # Clear legacy narrow cookie.
+        response.delete_cookie("csrf_token", secure=settings["secure"], samesite="Strict", path="/")
         return
     csrf = secrets.token_urlsafe(32)
     response.set_cookie("refresh_token", raw, httponly=True, max_age=current_app.config["REFRESH_TOKEN_SECONDS"], **settings)
-    response.set_cookie("csrf_token", csrf, httponly=False, max_age=current_app.config["REFRESH_TOKEN_SECONDS"], **settings)
+    response.delete_cookie("csrf_token", **settings)  # Remove a pre-Phase-8 cookie.
+    response.set_cookie("csrf_token", csrf, httponly=False, max_age=current_app.config["REFRESH_TOKEN_SECONDS"],
+                        secure=settings["secure"], samesite="Strict", path="/")
 
 
 def require_refresh_proof():

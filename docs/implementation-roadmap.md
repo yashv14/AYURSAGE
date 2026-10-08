@@ -75,6 +75,10 @@ This roadmap turns the target architecture into evidence gates. A phase is compl
 
 **Exit evidence:** one synthetic consultation moves through authorized submission, frozen inference, review, approval, and authorized report download.
 
+Local Phase 8 role UI and synthetic browser evidence are recorded in
+[Phase 8 frontend](phase8-frontend.md). Production inference/approval gates remain
+unavailable; real-model clinical acceptance and deployment are not claimed.
+
 ## Phase 9 — Azure release evidence
 
 - Build a pinned Gunicorn container and measured worker/resource configuration.
