@@ -4,6 +4,12 @@ AYUR-SAGE: A Unified Machine Learning Framework For Explainable Ayurvedic Clinic
 Phase 4 identity and consultations are implemented. Phase 5 now includes an inference-only V17 extraction, candidate parity audit, and gated consultation persistence. Live clinical inference remains unavailable pending original runtime evidence, authorized reference cases and reviewed clinical policies.
 
 - [Phase 5 evidence, blockers and required file placement](docs/phase5-evidence.md)
+- [Phase 6 local review, approval and acceptance status](docs/phase6-acceptance.md)
+
+Phase 6 adds versioned doctor review and transactional approval. Live approval remains
+blocked pending clinical-policy evidence; full real-model end-to-end acceptance is
+not established. The acceptance document distinguishes synthetic transaction tests
+from real-model parity checks.
 
 - [Architecture](docs/architecture.md)
 - [Implementation roadmap](docs/implementation-roadmap.md)

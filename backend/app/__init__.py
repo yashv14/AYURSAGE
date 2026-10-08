@@ -4,6 +4,7 @@ from flask import Flask
 
 from .health import health_blueprint
 from .api import api
+from .review import review_api
 from .commands import register_commands
 from .config import database_options, environment
 from .database import db, configure_engine
@@ -37,5 +38,6 @@ def create_app(config=None) -> Flask:
     register_errors(app)
     app.register_blueprint(health_blueprint, url_prefix="/api/v1/health")
     app.register_blueprint(api, url_prefix="/api/v1")
+    app.register_blueprint(review_api, url_prefix="/api/v1")
     register_commands(app)
     return app

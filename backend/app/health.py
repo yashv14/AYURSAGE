@@ -6,7 +6,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from .database import db
 
-SCHEMA_REVISION = "0001_platform"
+SCHEMA_REVISION = "0002_doctor_review"
 
 health_blueprint = Blueprint("health", __name__)
 
@@ -31,5 +31,7 @@ def readiness():
     return jsonify(data={"status": "ready" if ready else "unavailable",
                          "database": "ready" if ready else "unavailable",
                          "ml": "unavailable",
+                         "clinicalApproval": "unavailable",
+                         "approvalBlockers": ["CLINICAL_REVIEW_POLICY_UNAPPROVED"],
                          "mlBlockers": current_app.extensions["inference"].blockers},
                    requestId=g.request_id), 200 if ready else 503
