@@ -1,0 +1,137 @@
+name: Manual Azure release
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Existing Azure/GitHub environment code'
+        required: true
+        type: string
+      resource_group:
+        description: 'Existing Azure resource group'
+        required: true
+        type: string
+      registry:
+        description: 'Existing ACR name'
+        required: true
+        type: string
+      storage_account:
+        description: 'Existing private report storage account name'
+        required: true
+        type: string
+      web_origin:
+        description: 'Production HTTPS Static Web App origin'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    environment: production
+    concurrency: azure-production-release
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      - name: Validate inputs
+        env:
+          WEB_ORIGIN: ${{ inputs.web_origin }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+        run: |
+          case "$WEB_ORIGIN" in https://*) ;; *) exit 1;; esac
+          test -n "$DATABASE_URL"
+          test -n "$JWT_SECRET"
+      - name: Build and publish immutable image
+        id: image
+        env:
+          REGISTRY: ${{ inputs.registry }}
+        run: |
+          az acr login --name "$REGISTRY"
+          docker buildx build --push --tag "$REGISTRY.azurecr.io/ayursage:${GITHUB_SHA}" \
+            --metadata-file image-metadata.json -f deployment/Dockerfile .
+          digest=$(python -c 'import json; print(json.load(open("image-metadata.json"))["containerimage.digest"])')
+          echo "reference=$REGISTRY.azurecr.io/ayursage@$digest" >> "$GITHUB_OUTPUT"
+      - name: Install Bicep
+        run: az bicep install --version v0.48.1
+      - name: Update manual migration job
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          WEB_ORIGIN: ${{ inputs.web_origin }}
+          RESOURCE_GROUP: ${{ inputs.resource_group }}
+          ENVIRONMENT: ${{ inputs.environment }}
+          REGISTRY: ${{ inputs.registry }}
+          STORAGE: ${{ inputs.storage_account }}
+          IMAGE: ${{ steps.image.outputs.reference }}
+        run: |
+          az deployment group create --resource-group "$RESOURCE_GROUP" \
+            --template-file deployment/azure/release.bicep \
+            --parameters environment="$ENVIRONMENT" registryName="$REGISTRY" \
+              storageAccountName="$STORAGE" imageDigest="$IMAGE" webOrigin="$WEB_ORIGIN" \
+              databaseUrl="$DATABASE_URL" jwtSecret="$JWT_SECRET" activateApp=false \
+            --output none
+      - name: Run migration and require success
+        env:
+          RESOURCE_GROUP: ${{ inputs.resource_group }}
+          ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          job="ayursage-$ENVIRONMENT-migrate"
+          execution=$(az containerapp job start --name "$job" --resource-group "$RESOURCE_GROUP" --query name -o tsv)
+          test -n "$execution"
+          for attempt in $(seq 1 60); do
+            status=$(az containerapp job execution show --name "$job" --resource-group "$RESOURCE_GROUP" --job-execution-name "$execution" --query properties.status -o tsv)
+            case "$status" in Succeeded) exit 0;; Failed|Canceled) exit 1;; esac
+            sleep 10
+          done
+          exit 1
+      - name: Activate API only after migration
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          WEB_ORIGIN: ${{ inputs.web_origin }}
+          RESOURCE_GROUP: ${{ inputs.resource_group }}
+          ENVIRONMENT: ${{ inputs.environment }}
+          REGISTRY: ${{ inputs.registry }}
+          STORAGE: ${{ inputs.storage_account }}
+          IMAGE: ${{ steps.image.outputs.reference }}
+        run: |
+          az deployment group create --resource-group "$RESOURCE_GROUP" \
+            --template-file deployment/azure/release.bicep \
+            --parameters environment="$ENVIRONMENT" registryName="$REGISTRY" \
+              storageAccountName="$STORAGE" imageDigest="$IMAGE" webOrigin="$WEB_ORIGIN" \
+              databaseUrl="$DATABASE_URL" jwtSecret="$JWT_SECRET" activateApp=true \
+            --output none
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Build frontend
+        run: npm ci && npm run check
+        working-directory: frontend
+      - name: Publish frontend
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.SWA_DEPLOYMENT_TOKEN }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: upload
+          app_location: frontend
+          output_location: dist
+          skip_app_build: true
+      - name: Link same-origin API after frontend publication
+        env:
+          RESOURCE_GROUP: ${{ inputs.resource_group }}
+          ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          az deployment group create --resource-group "$RESOURCE_GROUP" \
+            --template-file deployment/azure/link-api.bicep \
+            --parameters environment="$ENVIRONMENT" --output none

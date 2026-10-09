@@ -93,3 +93,21 @@ jobs:
         working-directory: frontend
       - run: npm run test:e2e
         working-directory: frontend
+
+  release-preparation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build production image
+        run: docker build -f deployment/Dockerfile -t ayursage:ci .
+      - name: Check non-root image and verified font
+        run: |
+          docker run --rm --entrypoint sh ayursage:ci -c 'test "$(id -u)" != 0 && test "$(sha256sum /app/report-font/DejaVuSans.ttf | cut -d " " -f 1)" = 57f73e11f51999432bf7ab22ce55b6f945d5eca1bf824404cfa9ec2e3718c84e && gunicorn --version'
+      - name: Compile Azure templates (no deployment)
+        run: |
+          curl -fsSLo bicep https://github.com/Azure/bicep/releases/download/v0.48.1/bicep-linux-x64
+          chmod +x bicep
+          for template in deployment/azure/*.bicep; do ./bicep build "$template" --stdout >/dev/null; done
+      - name: Python release scripts syntax
+        run: python -m py_compile scripts/database_backup.py

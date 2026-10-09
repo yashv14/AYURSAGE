@@ -35,3 +35,12 @@ uploads/
 # Browser test outputs (may include synthetic clinical text)
 frontend/test-results/
 frontend/playwright-report/
+
+# Local release tooling and generated templates
+deployment/azure/bicep-local.exe
+deployment/azure/*.json
+.pytest-phase9-tmp/
+.phase9-font/
+.phase9-tools/
+*.sql
+*.sql.sha256
