@@ -5,6 +5,7 @@ Phase 4 identity and consultations are implemented. Phase 5 now includes an infe
 
 - [Phase 5 evidence, blockers and required file placement](docs/phase5-evidence.md)
 - [Phase 6 local review, approval and acceptance status](docs/phase6-acceptance.md)
+- [Phase 9 local release preparation and operations](deployment/README.md)
 - [Phase 7 private approved-snapshot reports and verification](docs/phase7-reports.md)
 
 Phase 6 adds versioned doctor review and transactional approval. Live approval remains

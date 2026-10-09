@@ -8,7 +8,7 @@ from .review import review_api
 from .reports import reports_api
 from .storage import configure_report_storage
 from .commands import register_commands
-from .config import database_options, environment
+from .config import database_options, environment, validate_production
 from .database import db, configure_engine
 from .errors import register_errors
 from .inference import DisabledInference
@@ -21,6 +21,7 @@ def create_app(config=None) -> Flask:
     app.config.update(environment())
     if config:
         app.config.update(config)
+    validate_production(app.config)
     if str(app.config["ML_ENABLED"]).lower() != "false":
         raise ValueError("ML integration is unavailable; ML_ENABLED must be false")
     app.extensions["inference"] = DisabledInference(
@@ -31,7 +32,8 @@ def create_app(config=None) -> Flask:
         raise ValueError("ALLOWED_ORIGINS must not be empty")
     app.config["SQLALCHEMY_DATABASE_URI"] = app.config["DATABASE_URL"]
     app.config["SQLALCHEMY_ENGINE_OPTIONS"] = database_options(
-        app.config["DATABASE_URL"], testing=app.config.get("TESTING", False))
+        app.config["DATABASE_URL"], testing=app.config.get("TESTING", False),
+        production=app.config.get("PRODUCTION", False))
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     db.init_app(app)
     from . import models  # noqa: F401 - register metadata without querying the DB
